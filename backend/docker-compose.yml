@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  aoikumo-worker:
+    build: .
+    container_name: aoikumo-importer-worker
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - WORDPRESS_URL=${WORDPRESS_URL}
+      - WORDPRESS_HMAC_SECRET=${WORDPRESS_HMAC_SECRET}
+      - GOOGLE_SERVICE_ACCOUNT_EMAIL=${GOOGLE_SERVICE_ACCOUNT_EMAIL}
+      - GOOGLE_PRIVATE_KEY=${GOOGLE_PRIVATE_KEY}
+      - GOOGLE_PROJECT_ID=${GOOGLE_PROJECT_ID}
+      - AOIKUMO_LOGIN_URL=${AOIKUMO_LOGIN_URL}
+      - AOIKUMO_USERNAME=${AOIKUMO_USERNAME}
+      - AOIKUMO_PASSWORD=${AOIKUMO_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+      - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS:-900000}
+      - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS:-100}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_FILE_PATH=${LOG_FILE_PATH:-./logs/worker.log}
+      - BROWSER_HEADLESS=${BROWSER_HEADLESS:-true}
+      - BROWSER_TIMEOUT=${BROWSER_TIMEOUT:-30000}
+      - BROWSER_RETRY_ATTEMPTS=${BROWSER_RETRY_ATTEMPTS:-3}
+    volumes:
+      - ./logs:/app/logs
+      - ./screenshots:/app/logs/screenshots
+    networks:
+      - aoikumo-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  aoikumo-network:
+    driver: bridge
+
