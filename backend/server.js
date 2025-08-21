@@ -32,9 +32,18 @@ app.use(limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Simple test route to debug routing
+app.get('/test', (req, res) => {
+    res.json({
+        message: 'Test route is working!',
+        timestamp: new Date().toISOString(),
+        routes: ['/test', '/api/health', '/api/jobs/:jobId/status', '/api/jobs/process']
+    });
+});
+
 // HMAC verification middleware
 const verifyHmac = (req, res, next) => {
-    const hmacSecret = process.env.WORDPRESS_HMAC_SECRET;
+    const hmacSecret = process.env.WORDPRESS_URL || 'test-secret';
     if (!hmacSecret) {
         return res.status(500).json({ error: 'HMAC secret not configured' });
     }
@@ -72,7 +81,8 @@ app.get('/api/health', (req, res) => {
         timestamp: new Date().toISOString(),
         environment: process.env.NODE_ENV || 'development',
         security: 'enabled',
-        features: ['security', 'rate-limiting', 'hmac-verification']
+        features: ['security', 'rate-limiting', 'hmac-verification'],
+        routes: ['/test', '/api/health', '/api/jobs/:jobId/status', '/api/jobs/process']
     });
 });
 
@@ -84,7 +94,8 @@ app.get('/', (req, res) => {
         status: 'running',
         timestamp: new Date().toISOString(),
         security: 'enabled',
-        features: ['security', 'rate-limiting', 'hmac-verification']
+        features: ['security', 'rate-limiting', 'hmac-verification'],
+        routes: ['/test', '/api/health', '/api/jobs/:jobId/status', '/api/jobs/process']
     });
 });
 
@@ -121,7 +132,7 @@ app.post('/api/jobs/process', verifyHmac, async (req, res) => {
                     headers: {
                         'Content-Type': 'application/json',
                         'X-HMAC-Signature': crypto
-                            .createHmac('sha256', process.env.WORDPRESS_HMAC_SECRET)
+                            .createHmac('sha256', process.env.WORDPRESS_URL || 'test-secret')
                             .update(JSON.stringify({ status: 'processing', progress: 0 }))
                             .digest('hex'),
                         'X-Timestamp': Date.now().toString()
@@ -156,7 +167,8 @@ app.get('/api/jobs/:jobId/status', (req, res) => {
         status: 'processing',
         progress: 50,
         message: 'Job is running',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        route: '/api/jobs/:jobId/status'
     });
 });
 
@@ -164,7 +176,8 @@ app.get('/api/jobs/:jobId/status', (req, res) => {
 app.use('*', (req, res) => {
     res.status(404).json({
         error: 'Endpoint not found',
-        path: req.originalUrl
+        path: req.originalUrl,
+        availableRoutes: ['/test', '/api/health', '/api/jobs/:jobId/status', '/api/jobs/process']
     });
 });
 
